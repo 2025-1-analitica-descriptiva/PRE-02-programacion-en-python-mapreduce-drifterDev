@@ -18,7 +18,14 @@ from itertools import groupby
 # text0_2.txt, etc.
 #
 def copy_raw_files_to_input_folder(n):
-    """Funcion copy_files"""
+    raw_files = glob.glob('files/raw/*.txt')
+    for file in raw_files:
+        base_name = os.path.basename(file)
+        for i in range(1, n + 1):
+            new_file_name = f"files/input/{base_name.replace('.txt', f'_{i}.txt')}"
+            with open(file, 'r') as src_file:
+                with open(new_file_name, 'w') as dest_file:
+                    dest_file.write(src_file.read())
 
 
 #
@@ -37,7 +44,14 @@ def copy_raw_files_to_input_folder(n):
 #   ]
 #
 def load_input(input_directory):
-    """Funcion load_input"""
+    data = []
+    for filename in os.listdir(input_directory):
+        if filename.endswith('.txt'):
+            with open(os.path.join(input_directory, filename), 'r') as f:
+                for line in f:
+                    data.append((filename, line.strip()))
+    return data
+
 
 
 #
@@ -45,8 +59,19 @@ def load_input(input_directory):
 # función anterior y retorna una lista de tuplas (clave, valor). Esta función
 # realiza el preprocesamiento de las líneas de texto,
 #
+import string
+
+
 def line_preprocessing(sequence):
-    """Line Preprocessing"""
+    processed = []
+    for filename, line in sequence:
+        # Eliminar puntuación y convertir a minúsculas
+        line = line.translate(str.maketrans('', '', string.punctuation)).lower()
+        words = line.split()
+        for word in words:
+            processed.append((word, 1))
+    return processed
+
 
 
 #
@@ -62,7 +87,8 @@ def line_preprocessing(sequence):
 #   ]
 #
 def mapper(sequence):
-    """Mapper"""
+    return sequence
+
 
 
 #
@@ -77,7 +103,8 @@ def mapper(sequence):
 #   ]
 #
 def shuffle_and_sort(sequence):
-    """Shuffle and Sort"""
+    return sorted(sequence, key=lambda x: x[0])
+
 
 
 #
@@ -86,16 +113,31 @@ def shuffle_and_sort(sequence):
 # ejemplo, la reducción indica cuantas veces aparece la palabra analytics en el
 # texto.
 #
+from itertools import groupby
+
+
 def reducer(sequence):
-    """Reducer"""
+    sorted_sequence = sorted(sequence, key=lambda x: x[0])
+    reduced = []
+    for key, group in groupby(sorted_sequence, key=lambda x: x[0]):
+        total = sum(val for key, val in group)
+        reduced.append((key, total))
+    return reduced
+
 
 
 #
 # Escriba la función create_ouptput_directory que recibe un nombre de
 # directorio y lo crea. Si el directorio existe, lo borra
 #
-def create_ouptput_directory(output_directory):
-    """Create Output Directory"""
+import shutil
+
+
+def create_output_directory(output_directory):
+    if os.path.exists(output_directory):
+        shutil.rmtree(output_directory)
+    os.makedirs(output_directory)
+
 
 
 #
@@ -107,7 +149,10 @@ def create_ouptput_directory(output_directory):
 # separados por un tabulador.
 #
 def save_output(output_directory, sequence):
-    """Save Output"""
+    with open(os.path.join(output_directory, 'part-00000'), 'w') as f:
+        for key, value in sequence:
+            f.write(f"{key}\t{value}\n")
+
 
 
 #
@@ -115,14 +160,38 @@ def save_output(output_directory, sequence):
 # entregado como parámetro.
 #
 def create_marker(output_directory):
-    """Create Marker"""
+    with open(os.path.join(output_directory, '_SUCCESS'), 'w') as f:
+        f.write('Job completed successfully.\n')
+
 
 
 #
 # Escriba la función job, la cual orquesta las funciones anteriores.
 #
 def run_job(input_directory, output_directory):
-    """Job"""
+    create_output_directory(output_directory)
+    
+    # Cargar datos
+    input_data = load_input(input_directory)
+    
+    # Preprocesar líneas
+    preprocessed_data = line_preprocessing(input_data)
+    
+    # Mapear
+    mapped_data = mapper(preprocessed_data)
+    
+    # Ordenar y agrupar
+    sorted_data = shuffle_and_sort(mapped_data)
+    
+    # Reducir
+    reduced_data = reducer(sorted_data)
+    
+    # Guardar resultado
+    save_output(output_directory, reduced_data)
+    
+    # Crear marcador de éxito
+    create_marker(output_directory)
+
 
 
 if __name__ == "__main__":
